@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 import { View, FlatList, Text, StyleSheet, Dimensions } from 'react-native';
 import { AppContext } from '../AppContext';
 import VideoPlayerItem from '../components/VideoPlayerItem';
@@ -7,6 +7,14 @@ const { height: screenHeight } = Dimensions.get('window');
 
 export default function VideoFeedScreen() {
   const { videoFiles, showButtons } = useContext(AppContext);
+  const [visibleIndex, setVisibleIndex] = useState(0);
+  const viewabilityConfig = { itemVisiblePercentThreshold: 80 };
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      setVisibleIndex(viewableItems[0].index);
+    }
+  }).current;
 
   if (videoFiles.length === 0) {
     return (
@@ -19,8 +27,13 @@ export default function VideoFeedScreen() {
   return (
     <FlatList
       data={videoFiles}
-      renderItem={({ item }) => (
-        <VideoPlayerItem uri={item.uri} title={item.title} showButtons={showButtons} />
+      renderItem={({ item, index }) => (
+        <VideoPlayerItem
+          uri={item.uri}
+          title={item.title}
+          showButtons={showButtons}
+          isVisible={index === visibleIndex}
+        />
       )}
       keyExtractor={(item, index) => index.toString()}
       pagingEnabled
@@ -28,6 +41,8 @@ export default function VideoFeedScreen() {
       snapToAlignment="start"
       decelerationRate="fast"
       showsVerticalScrollIndicator={false}
+      onViewableItemsChanged={onViewableItemsChanged}
+      viewabilityConfig={viewabilityConfig}
     />
   );
 }

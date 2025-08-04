@@ -6,16 +6,15 @@ import {
   TouchableOpacity,
   Dimensions,
   TouchableWithoutFeedback,
-  Animated,
 } from 'react-native';
 import { Video, Audio } from 'expo-av';
 import { AntDesign, FontAwesome } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
-export default function VideoPlayerItem({ uri, title, showButtons }) {
+export default function VideoPlayerItem({ uri, title, showButtons, isVisible }) {
   const videoRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
 
   useEffect(() => {
@@ -28,6 +27,18 @@ export default function VideoPlayerItem({ uri, title, showButtons }) {
     });
   }, []);
 
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isVisible) {
+        videoRef.current.playAsync();
+        setIsPlaying(true);
+      } else {
+        videoRef.current.stopAsync();
+        setIsPlaying(false);
+      }
+    }
+  }, [isVisible]);
+
   const handlePress = async () => {
     if (videoRef.current) {
       const status = await videoRef.current.getStatusAsync();
@@ -38,8 +49,6 @@ export default function VideoPlayerItem({ uri, title, showButtons }) {
         await videoRef.current.playAsync();
         setIsPlaying(true);
       }
-
-      // Show central icon briefly
       setShowPlayIcon(true);
       setTimeout(() => setShowPlayIcon(false), 600);
     }
@@ -60,7 +69,6 @@ export default function VideoPlayerItem({ uri, title, showButtons }) {
             source={{ uri }}
             style={styles.video}
             resizeMode="contain"
-            shouldPlay
             isLooping
             isMuted={false}
           />
@@ -76,13 +84,11 @@ export default function VideoPlayerItem({ uri, title, showButtons }) {
         </View>
       </TouchableWithoutFeedback>
 
-      {/* Titre façon TikTok */}
       <View style={styles.bottomLeft}>
         <Text style={styles.username}>@user</Text>
         <Text style={styles.description}>{title}</Text>
       </View>
 
-      {/* Boutons à droite */}
       {showButtons && (
         <View style={styles.overlay}>
           <TouchableOpacity style={styles.button}>

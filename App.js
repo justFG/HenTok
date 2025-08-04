@@ -1,20 +1,37 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+  import React from 'react';
+  import { NavigationContainer } from '@react-navigation/native';
+  import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+  import { Ionicons } from '@expo/vector-icons';
+  import { AppProvider } from './AppContext';
+  import VideoFeedScreen from './screens/VideoFeedScreen';
+  import SettingsScreen from './screens/SettingsScreen';
+  import FavoritesScreen from './screens/FavoritesScreen'; // 👈 nouveau
 
-export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
-}
+  const Tab = createBottomTabNavigator();
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+  export default function App() {
+    return (
+      <AppProvider>
+        <NavigationContainer>
+          <Tab.Navigator
+            screenOptions={({ route }) => ({
+              tabBarIcon: ({ color, size }) => {
+                let iconName = 'settings';
+
+                if (route.name === 'HenTok') iconName = 'play-circle';
+                else if (route.name === 'Favoris') iconName = 'star';
+                
+                return <Ionicons name={iconName} size={size} color={color} />;
+              },
+              tabBarActiveTintColor: '#6F130A',
+              headerShown: false,
+            })}
+          >
+            <Tab.Screen name="HenTok" component={VideoFeedScreen} />
+            <Tab.Screen name="Favoris" component={FavoritesScreen} />
+            <Tab.Screen name="Paramètres" component={SettingsScreen} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </AppProvider>
+    );
+  }

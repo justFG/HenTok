@@ -13,14 +13,20 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.justfg.HenTok",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [],
+      "package": "com.justfg.HenTok"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -28,6 +34,11 @@
     "plugins": [
       "expo-video",
       "react-native-video"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "158bd593-c124-4f06-9372-c71de8bdcddb"
+      }
+    }
   }
 }

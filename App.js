@@ -25,6 +25,10 @@
               },
               tabBarActiveTintColor: '#6F130A',
               headerShown: false,
+              tabBarStyle: {
+              backgroundColor: '#0f0e13', // 👈 couleur sombre
+              borderTopWidth: 0,          // 👈 optionnel, enlève la bordure blanche
+                           },
             })}
           >
             <Tab.Screen name="HenTok" component={VideoFeedScreen} />

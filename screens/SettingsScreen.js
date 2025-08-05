@@ -30,7 +30,7 @@ export default function SettingsScreen() {
         onValueChange={(val) => setShowButtons(val)}
         trackColor={{ true: '#6F130A' }}
       />
-      <View style={{ marginTop: 30 }}>
+      <View style={{ marginTop: 300 }}>
         <Button title="Importer des vidéos" onPress={pickFolder} color="#6F130A" />
       </View>
     </View>
@@ -39,5 +39,5 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: 'white' },
-  label: { fontSize: 18, marginBottom: 10, color: '#6F130A' },
+  label: { fontSize: 18, marginBottom: 10,marginTop: 70, color: '#6F130A' },
 });

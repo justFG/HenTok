@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Video, Audio } from 'expo-av';
 import { AntDesign, FontAwesome } from '@expo/vector-icons';
+import { AppContext } from '../AppContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -16,6 +17,16 @@ export default function VideoPlayerItem({ uri, title, showButtons, isVisible }) 
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
+
+  const {
+    likedVideos,
+    favoriteVideos,
+    toggleLike,
+    toggleFavorite,
+  } = useContext(AppContext);
+
+  const isLiked = likedVideos.includes(uri);
+  const isFavorited = favoriteVideos.includes(uri);
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -91,11 +102,11 @@ export default function VideoPlayerItem({ uri, title, showButtons, isVisible }) 
 
       {showButtons && (
         <View style={styles.overlay}>
-          <TouchableOpacity style={styles.button}>
-            <AntDesign name="heart" size={28} color="white" />
+          <TouchableOpacity style={styles.button} onPress={() => toggleLike(uri)}>
+            <AntDesign name="heart" size={28} color={isLiked ? 'red' : 'white'} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.button}>
-            <FontAwesome name="bookmark" size={26} color="white" />
+          <TouchableOpacity style={styles.button} onPress={() => toggleFavorite(uri)}>
+            <FontAwesome name="bookmark" size={26} color={isFavorited ? 'gold' : 'white'} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.button} onPress={enterFullscreen}>
             <AntDesign name="arrowsalt" size={26} color="white" />

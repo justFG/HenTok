@@ -1,16 +1,18 @@
 import React, { useContext } from 'react';
-import { FlatList, View, Dimensions, StyleSheet } from 'react-native';
+import { FlatList, Dimensions } from 'react-native';
 import VideoPlayerItem from '../components/VideoPlayerItem';
 import { AppContext } from '../AppContext';
 
 const screenHeight = Dimensions.get('window').height;
 
-export default function VideoFeedScreen() {
-  const { videos, showButtons } = useContext(AppContext);
+export default function FavoritesScreen() {
+  const { videoFiles, favoriteVideos, showButtons } = useContext(AppContext);
+
+  const favorites = videoFiles.filter((video) => favoriteVideos.includes(video.uri));
 
   return (
     <FlatList
-      data={videos}
+      data={favorites}
       keyExtractor={(item, index) => index.toString()}
       renderItem={({ item }) => (
         <VideoPlayerItem

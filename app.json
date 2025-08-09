@@ -29,7 +29,29 @@
       "package": "com.justfg.HenTok"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "manifest": {
+        "name": "HenTok",
+        "short_name": "HenTok",
+        "start_url": ".",
+        "scope": ".",
+        "display": "standalone",
+        "background_color": "#0f0e13",
+        "theme_color": "#6F130A",
+        "description": "HenTok app web version",
+        "icons": [
+          {
+            "src": "./assets/icon.png",
+            "sizes": "192x192",
+            "type": "image/png"
+          },
+          {
+            "src": "./assets/icon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+          }
+        ]
+      }
     },
     "plugins": [
       "expo-video",

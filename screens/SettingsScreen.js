@@ -14,6 +14,7 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import { AntDesign } from '@expo/vector-icons';
 import { AppContext } from '../AppContext';
 
 export default function SettingsScreen({ navigation }) {
@@ -49,75 +50,68 @@ export default function SettingsScreen({ navigation }) {
   }, [videoFiles]);
 
   const pickFolder = async () => {
-  try {
-    const res = await DocumentPicker.getDocumentAsync({ type: 'video/*', multiple: true });
-    console.log('DocumentPicker result:', res);
-
-    // Normaliser les différentes formes de retour
-    let files = [];
-    if (res && Array.isArray(res.assets)) {
-      files = res.assets; // expo sdk récent (iOS) -> { assets: [...] }
-    } else if (Array.isArray(res)) {
-      files = res;
-    } else if (res && Array.isArray(res.output)) {
-      files = res.output;
-    } else if (res && res.type === 'success' && res.uri) {
-      files = [res];
-    } else if (res && (res.type === 'cancel' || res.canceled === true)) {
-      Alert.alert('Aucun fichier sélectionné');
-      return;
-    } else {
-      Alert.alert('Aucun fichier sélectionné');
-      return;
-    }
-
-    if (!files || files.length === 0) {
-      Alert.alert('Aucun fichier sélectionné');
-      return;
-    }
-
-    // Préparer dossier d'app pour stocker les vidéos importées
-    const destDir = FileSystem.documentDirectory + 'HenTokVideos/';
     try {
-      await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
-    } catch (e) {
-      // ignore si existe déjà ou impossible (on continue)
-      console.log('makeDirectoryAsync err', e);
-    }
+      const res = await DocumentPicker.getDocumentAsync({ type: 'video/*', multiple: true });
+      console.log('DocumentPicker result:', res);
 
-    const parsed = [];
-    for (const file of files) {
-      const origUri = file.uri;
-      const name = file.name || (origUri ? origUri.split('/').pop() : `video_${Date.now()}.mp4`);
-      const safeName = name.replace(/\s/g, '_');
-      const destUri = destDir + safeName;
-
-      // essai de copier le fichier dans documentDirectory pour persistance
-      try {
-        await FileSystem.copyAsync({ from: origUri, to: destUri });
-        parsed.push({ uri: destUri, title: safeName.replace(/\.[^/.]+$/, '') });
-      } catch (err) {
-        // si copy échoue, fallback sur l'uri d'origine
-        console.warn('copy failed, using original uri', err);
-        parsed.push({ uri: origUri, title: safeName.replace(/\.[^/.]+$/, '') });
+      let files = [];
+      if (res && Array.isArray(res.assets)) {
+        files = res.assets;
+      } else if (Array.isArray(res)) {
+        files = res;
+      } else if (res && Array.isArray(res.output)) {
+        files = res.output;
+      } else if (res && res.type === 'success' && res.uri) {
+        files = [res];
+      } else if (res && (res.type === 'cancel' || res.canceled === true)) {
+        Alert.alert('Aucun fichier sélectionné');
+        return;
+      } else {
+        Alert.alert('Aucun fichier sélectionné');
+        return;
       }
+
+      if (!files || files.length === 0) {
+        Alert.alert('Aucun fichier sélectionné');
+        return;
+      }
+
+      const destDir = FileSystem.documentDirectory + 'HenTokVideos/';
+      try {
+        await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
+      } catch (e) {
+        console.log('makeDirectoryAsync err', e);
+      }
+
+      const parsed = [];
+      for (const file of files) {
+        const origUri = file.uri;
+        const name = file.name || (origUri ? origUri.split('/').pop() : `video_${Date.now()}.mp4`);
+        const safeName = name.replace(/\s/g, '_');
+        const destUri = destDir + safeName;
+
+        try {
+          await FileSystem.copyAsync({ from: origUri, to: destUri });
+          parsed.push({ uri: destUri, title: safeName.replace(/\.[^/.]+$/, '') });
+        } catch (err) {
+          console.warn('copy failed, using original uri', err);
+          parsed.push({ uri: origUri, title: safeName.replace(/\.[^/.]+$/, '') });
+        }
+      }
+
+      // merge without duplicates by uri
+      const merged = [...videoFiles];
+      parsed.forEach(p => {
+        if (!merged.some(m => m.uri === p.uri)) merged.push(p);
+      });
+
+      setVideoFiles(merged);
+      Alert.alert('Succès', `${parsed.length} vidéo(s) importée(s).`);
+    } catch (err) {
+      console.warn('pickFolder error', err);
+      Alert.alert('Erreur', 'Impossible de charger les vidéos (voir console).');
     }
-
-    // merge sans doublons (par uri)
-    const merged = [...videoFiles];
-    parsed.forEach(p => {
-      if (!merged.some(m => m.uri === p.uri)) merged.push(p);
-    });
-
-    setVideoFiles(merged);
-    Alert.alert('Succès', `${parsed.length} vidéo(s) importée(s).`);
-  } catch (err) {
-    console.warn('pickFolder error', err);
-    Alert.alert('Erreur', 'Impossible de charger les vidéos (voir console).');
-  }
-};
-
-
+  };
 
   const clearVideos = () => {
     Alert.alert(
@@ -146,11 +140,9 @@ export default function SettingsScreen({ navigation }) {
         text: 'Supprimer',
         style: 'destructive',
         onPress: async () => {
-          // Soft delete from app state first
           removeVideosByUris(selectedUris);
 
           if (hard) {
-            // Try to delete physical files (may fail on some URIs / platforms)
             for (const uri of selectedUris) {
               try {
                 await FileSystem.deleteAsync(uri, { idempotent: true });

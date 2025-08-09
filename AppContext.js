@@ -10,7 +10,16 @@ export function AppProvider({ children }) {
   const [likedVideos, setLikedVideos] = useState([]);
   const [favoriteVideos, setFavoriteVideos] = useState([]);
   const [theme, setTheme] = useState('dark');
-
+const [videoPlaybackStates, setVideoPlaybackStates] = useState({});
+ const updateVideoPlaybackState = (uri, newState) => {
+    setVideoPlaybackStates(prev => ({
+      ...prev,
+      [uri]: {
+        ...prev[uri],
+        ...newState,
+      }
+    }));
+  };
   // load persisted state
   useEffect(() => {
     (async () => {
@@ -54,16 +63,25 @@ export function AppProvider({ children }) {
     setFavoriteVideos(prev => prev.filter(u => !uris.includes(u)));
   };
 
-  return (
-    <AppContext.Provider value={{
-      videoFiles, setVideoFiles,
-      showButtons, setShowButtons,
-      likedVideos, favoriteVideos,
-      toggleLike, toggleFavorite,
-      theme, setTheme,
-      removeVideosByUris,
-    }}>
-      {children}
-    </AppContext.Provider>
-  );
-}
+   return (
+  <AppContext.Provider value={{
+    videoFiles,
+    setVideoFiles,
+    likedVideos,
+    setLikedVideos,
+    favoriteVideos,
+    setFavoriteVideos,
+    showButtons,
+    setShowButtons,
+    theme,
+    setTheme,
+    videoPlaybackStates,
+    updateVideoPlaybackState,
+    toggleLike,         // <-- ajoute ici
+    toggleFavorite,     // <-- et ici
+    removeVideosByUris,
+  }}>
+    {children}
+  </AppContext.Provider>
+);
+};

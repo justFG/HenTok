@@ -1,13 +1,23 @@
 // screens/FavoritesScreen.js
-import React, { useContext } from 'react';
-import { View, FlatList, Text, StyleSheet } from 'react-native';
+import React, { useContext, useRef, useState } from 'react';
+import { View, FlatList, Text, StyleSheet, Dimensions } from 'react-native';
 import { AppContext } from '../AppContext';
 import VideoPlayerItem from '../components/VideoPlayerItem';
+import { useIsFocused } from '@react-navigation/native';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function FavoritesScreen() {
   const { videoFiles, favoriteVideos, showButtons } = useContext(AppContext);
-
   const favFiles = videoFiles.filter(v => favoriteVideos.includes(v.uri));
+
+  const [visibleIndex, setVisibleIndex] = useState(0);
+  const viewabilityConfig = { itemVisiblePercentThreshold: 80 };
+  const isFocused = useIsFocused();
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) setVisibleIndex(viewableItems[0].index);
+  }).current;
 
   if (favFiles.length === 0) {
     return (
@@ -20,18 +30,22 @@ export default function FavoritesScreen() {
   return (
     <FlatList
       data={favFiles}
-      renderItem={({ item }) => (
+      renderItem={({ item, index }) => (
         <VideoPlayerItem
           uri={item.uri}
           title={item.title}
           showButtons={showButtons}
-          shouldPlay={false} // don't auto play inside favorites list; paging could be added later
+          shouldPlay={isFocused && index === visibleIndex}
         />
       )}
       keyExtractor={(item) => item.uri}
       pagingEnabled
-      snapToInterval={styles.fullHeight}
+      snapToInterval={screenHeight}
+      snapToAlignment="start"
+      decelerationRate="fast"
       showsVerticalScrollIndicator={false}
+      onViewableItemsChanged={onViewableItemsChanged}
+      viewabilityConfig={viewabilityConfig}
     />
   );
 }

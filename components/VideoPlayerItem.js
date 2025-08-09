@@ -1,4 +1,3 @@
-// components/VideoPlayerItem.js
 import React, { useRef, useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -15,18 +14,24 @@ import { AppContext } from '../AppContext';
 
 const { width, height } = Dimensions.get('window');
 
-export default function VideoPlayerItem({ uri, title, showButtons = true, shouldPlay = false }) {
+export default function VideoPlayerItem({ uri, title, showButtons, isVisible, shouldPauseAll }) {
   const videoRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showPlayIcon, setShowPlayIcon] = useState(false);
-  const [status, setStatus] = useState({ isLoaded: false });
-
   const {
+    videoPlaybackStates,
+    updateVideoPlaybackState,
     likedVideos,
     favoriteVideos,
     toggleLike,
     toggleFavorite,
   } = useContext(AppContext);
+
+  const savedState = videoPlaybackStates[uri] || { position: 0, isPaused: false };
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showPlayIcon, setShowPlayIcon] = useState(false);
+  const [position, setPosition] = useState(savedState.position || 0);
+  const [duration, setDuration] = useState(0);
+  const [isManuallyPaused, setIsManuallyPaused] = useState(savedState.isPaused || false);
 
   const isLiked = likedVideos.includes(uri);
   const isFavorited = favoriteVideos.includes(uri);
@@ -41,69 +46,112 @@ export default function VideoPlayerItem({ uri, title, showButtons = true, should
     });
   }, []);
 
-  // control playback via shouldPlay
+  // Charge la position sauvegardée au montage
   useEffect(() => {
-    let mounted = true;
-    const control = async () => {
-      if (!videoRef.current || !mounted) return;
-      try {
-        const s = await videoRef.current.getStatusAsync();
-        // if not loaded yet, try to call play/pause after load through status callback
-        if (shouldPlay) {
-          if (s.isLoaded && !s.isPlaying) {
-            await videoRef.current.playAsync();
-            setIsPlaying(true);
-          }
-        } else {
-          if (s.isLoaded && s.isPlaying) {
-            await videoRef.current.pauseAsync();
-            setIsPlaying(false);
-          }
-        }
-      } catch (e) {
-        // ignore
+    async function loadPosition() {
+      if (videoRef.current && savedState.position > 0) {
+        try {
+          await videoRef.current.setPositionAsync(savedState.position * 1000);
+        } catch (e) {}
       }
+    }
+    loadPosition();
+  }, []);
+
+  // Mise à jour du status de la vidéo, sauvegarde position + pause
+  useEffect(() => {
+    const onPlaybackStatusUpdate = (status) => {
+      if (!status.isLoaded) return;
+
+      setPosition(status.positionMillis / 1000);
+      setDuration(status.durationMillis / 1000);
+      setIsPlaying(status.isPlaying);
+
+      updateVideoPlaybackState(uri, {
+        position: status.positionMillis / 1000,
+        isPaused: !status.isPlaying,
+      });
     };
-    control();
-    return () => { mounted = false; };
-  }, [shouldPlay]);
 
-  const onPlaybackStatusUpdate = (s) => {
-    if (!s) return;
-    setStatus(s);
-    setIsPlaying(!!s.isPlaying);
-  };
+    videoRef.current?.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
 
-  const handlePress = async () => {
+    return () => {
+      if (videoRef.current) videoRef.current.setOnPlaybackStatusUpdate(null);
+    };
+  }, []);
+
+  // Gestion lecture selon visibilité, pause manuelle et pause générale
+  useEffect(() => {
+  async function controlPlayback() {
     if (!videoRef.current) return;
-    try {
-      const s = await videoRef.current.getStatusAsync();
-      if (s.isPlaying) {
+    const status = await videoRef.current.getStatusAsync();
+
+    if (shouldPauseAll) {
+      if (status.isPlaying) {
         await videoRef.current.pauseAsync();
         setIsPlaying(false);
-      } else {
+        setIsManuallyPaused(true); // On garde manuel pause true
+      }
+      return;
+    }
+
+    if (isVisible) {
+      if (!status.isPlaying && !isManuallyPaused) {
         await videoRef.current.playAsync();
         setIsPlaying(true);
+        setShowPlayIcon(false);
       }
-      setShowPlayIcon(true);
-      setTimeout(() => setShowPlayIcon(false), 600);
-    } catch (e) {}
-  };
-
-  const enterFullscreen = () => {
-    if (videoRef.current && videoRef.current.presentFullscreenPlayer) {
-      videoRef.current.presentFullscreenPlayer();
+      // Si manuellement pausé, on reste en pause, on ne lance rien.
+    } else {
+      // La vidéo devient invisible => reset manuel pause et pause la vidéo
+      if (status.isPlaying) {
+        await videoRef.current.pauseAsync();
+      }
+      setIsPlaying(false);
+      setIsManuallyPaused(false);  // <<< reset manuel pause ici
+      setShowPlayIcon(false);
     }
+  }
+  controlPlayback();
+}, [isVisible, isManuallyPaused, shouldPauseAll]);
+useEffect(() => {
+  async function resetPositionIfVisible() {
+    if (isVisible && videoRef.current) {
+      await videoRef.current.setPositionAsync(0);
+      setPosition(0);
+      setIsManuallyPaused(false); // relance automatique possible
+    }
+  }
+  resetPositionIfVisible();
+}, [isVisible]);
+
+  // Play/pause manuel
+  const handlePress = async () => {
+    if (!videoRef.current) return;
+    const status = await videoRef.current.getStatusAsync();
+
+    if (status.isPlaying) {
+      await videoRef.current.pauseAsync();
+      setIsPlaying(false);
+      setIsManuallyPaused(true);
+    } else {
+      await videoRef.current.playAsync();
+      setIsPlaying(true);
+      setIsManuallyPaused(false);
+    }
+    setShowPlayIcon(true);
+    setTimeout(() => setShowPlayIcon(false), 600);
   };
 
-  const durationSec = status.durationMillis ? Math.floor(status.durationMillis / 1000) : 0;
-  const posSec = status.positionMillis ? Math.floor(status.positionMillis / 1000) : 0;
-
-  const onSeekComplete = async (value) => {
+  // Slider seek
+  const handleSlidingComplete = async (value) => {
     if (!videoRef.current) return;
-    try {
-      await videoRef.current.setPositionAsync(value * 1000);
-    } catch (e) {}
+    await videoRef.current.setPositionAsync(value * 1000);
+    setPosition(value);
+    setIsManuallyPaused(true);
+    setIsPlaying(false);
+    setShowPlayIcon(true);
+    setTimeout(() => setShowPlayIcon(false), 600);
   };
 
   return (
@@ -117,8 +165,6 @@ export default function VideoPlayerItem({ uri, title, showButtons = true, should
             resizeMode="contain"
             isLooping
             isMuted={false}
-            onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-            shouldPlay={false} // controlled by shouldPlay effect
           />
           {showPlayIcon && (
             <View style={styles.centerIcon}>
@@ -135,22 +181,19 @@ export default function VideoPlayerItem({ uri, title, showButtons = true, should
       <View style={styles.bottomLeft}>
         <Text style={styles.username}>@user</Text>
         <Text style={styles.description}>{title}</Text>
-      </View>
 
-      {status && status.isLoaded && (
-        <View style={styles.sliderContainer}>
-          <Text style={styles.timeText}>{formatTime(posSec)}</Text>
+        {!isPlaying && duration > 0 && (
           <Slider
-            style={{ flex: 1 }}
+            style={{ width: '90%', height: 40, marginTop: 10 }}
             minimumValue={0}
-            maximumValue={durationSec}
-            value={posSec}
-            onSlidingComplete={onSeekComplete}
-            step={1}
+            maximumValue={duration}
+            value={position}
+            minimumTrackTintColor="#6F130A"
+            maximumTrackTintColor="#fff"
+            onSlidingComplete={handleSlidingComplete}
           />
-          <Text style={styles.timeText}>{formatTime(durationSec)}</Text>
-        </View>
-      )}
+        )}
+      </View>
 
       {showButtons && (
         <View style={styles.overlay}>
@@ -160,19 +203,13 @@ export default function VideoPlayerItem({ uri, title, showButtons = true, should
           <TouchableOpacity style={styles.button} onPress={() => toggleFavorite(uri)}>
             <FontAwesome name="bookmark" size={26} color={isFavorited ? 'gold' : 'white'} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={enterFullscreen}>
+          <TouchableOpacity style={styles.button} onPress={() => videoRef.current?.presentFullscreenPlayer()}>
             <AntDesign name="arrowsalt" size={26} color="white" />
           </TouchableOpacity>
         </View>
       )}
     </View>
   );
-}
-
-function formatTime(sec) {
-  const m = Math.floor(sec / 60).toString().padStart(2, '0');
-  const s = Math.floor(sec % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
 }
 
 const styles = StyleSheet.create({
@@ -206,6 +243,9 @@ const styles = StyleSheet.create({
     bottom: 80,
     left: 10,
     width: width * 0.7,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    padding: 10,
+    borderRadius: 8,
   },
   username: {
     color: '#FFF',
@@ -234,18 +274,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#6F130A',
     borderRadius: 30,
     padding: 14,
-  },
-  sliderContainer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timeText: {
-    color: '#FFF',
-    width: 48,
-    textAlign: 'center',
   },
 });

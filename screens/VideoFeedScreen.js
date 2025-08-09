@@ -1,5 +1,4 @@
-// screens/VideoFeedScreen.js
-import React, { useContext, useRef, useState } from 'react';
+import React, { useContext, useRef, useState, useEffect } from 'react';
 import { View, FlatList, Text, StyleSheet, Dimensions } from 'react-native';
 import { AppContext } from '../AppContext';
 import VideoPlayerItem from '../components/VideoPlayerItem';
@@ -10,8 +9,10 @@ const { height: screenHeight } = Dimensions.get('window');
 export default function VideoFeedScreen() {
   const { videoFiles, showButtons } = useContext(AppContext);
   const [visibleIndex, setVisibleIndex] = useState(0);
-  const viewabilityConfig = { itemVisiblePercentThreshold: 80 };
+  const [pauseAll, setPauseAll] = useState(false);
   const isFocused = useIsFocused();
+
+  const viewabilityConfig = { itemVisiblePercentThreshold: 80 };
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
@@ -19,7 +20,15 @@ export default function VideoFeedScreen() {
     }
   }).current;
 
-  if (!videoFiles || videoFiles.length === 0) {
+  useEffect(() => {
+    if (!isFocused) {
+      setPauseAll(true);
+    } else {
+      setPauseAll(false);
+    }
+  }, [isFocused]);
+
+  if (videoFiles.length === 0) {
     return (
       <View style={styles.empty}>
         <Text style={styles.emptyText}>Aucune vidéo trouvée</Text>
@@ -35,10 +44,11 @@ export default function VideoFeedScreen() {
           uri={item.uri}
           title={item.title}
           showButtons={showButtons}
-          shouldPlay={isFocused && index === visibleIndex}
+          isVisible={index === visibleIndex}
+          shouldPauseAll={pauseAll}
         />
       )}
-      keyExtractor={(item, index) => item.uri || index.toString()}
+      keyExtractor={(item, index) => index.toString()}
       pagingEnabled
       snapToInterval={screenHeight}
       snapToAlignment="start"
